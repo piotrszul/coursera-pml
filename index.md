@@ -50,9 +50,24 @@ print(fmla)
 
 
 
+```r
+# Initialize libraries and seeds
+library(caret)
+```
+
 ```
 ## Loading required package: lattice
 ## Loading required package: ggplot2
+```
+
+```r
+set.seed(199)
+# Hold 25% of the traning set for final out of sample estimation
+trainData <- read.csv("data/pml-training.csv")
+testData <- read.csv("data/pml-testing.csv")
+trainIdx <- createDataPartition(y = trainData$classe, p = 0.75, list = FALSE)
+trainSet <- trainData[trainIdx, ]
+testSet <- trainData[-trainIdx, ]
 ```
 
 I split the available training data into two random partitions: 75% for the traning set and 25% for the validation set used for the final estimation of out of sample accuracy of the model.

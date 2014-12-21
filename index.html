@@ -219,8 +219,21 @@ fmla &lt;- as.formula(paste(&quot;classe ~ &quot;, paste(all_predictors, collaps
 ##     accel_belt_z + magnet_belt_z
 </code></pre>
 
+<pre><code class="r"># Initialize libraries and seeds
+library(caret)
+</code></pre>
+
 <pre><code>## Loading required package: lattice
 ## Loading required package: ggplot2
+</code></pre>
+
+<pre><code class="r">set.seed(199)
+# Hold 25% of the traning set for final out of sample estimation
+trainData &lt;- read.csv(&quot;data/pml-training.csv&quot;)
+testData &lt;- read.csv(&quot;data/pml-testing.csv&quot;)
+trainIdx &lt;- createDataPartition(y = trainData$classe, p = 0.75, list = FALSE)
+trainSet &lt;- trainData[trainIdx, ]
+testSet &lt;- trainData[-trainIdx, ]
 </code></pre>
 
 <p>I split the available training data into two random partitions: 75% for the traning set and 25% for the validation set used for the final estimation of out of sample accuracy of the model.</p>
