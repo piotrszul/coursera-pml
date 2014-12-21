@@ -1,56 +1,68 @@
 Analysis for the PML assignment.
 ========================================================
 
-Analysis for the PML project.
+The goal is to predict 'classe' variable, based on any set of predictors and to apply the predictive model to the set of test cases. A quick look at the test cases shows, that the predictors used in the original paper (averages etc.) cannot be used in this case, becasue the values of all of them are not defined for test cases.
+
+Having no domain knowledge about the predictors I decided to use all available 'raw' variables and random forest as my classifier. The choise of classifier is dictated by the ease of use for mutli-class classification and its robustness for predictors of unknow distributions.
 
 ```{r}
+#Construct names of all variables of interest:
+ryp_components <-expand.grid(c("roll","yaw","pitch"), c("dumbbell","arm", "forearm", "belt"))
+gam_components <-expand.grid(c("gyros","accel","magnet"), c("dumbbell","arm", "forearm", "belt"), c("x","y","z"))
+ryp_predictors <- paste(ryp_components[[1]], ryp_components[[2]], sep="_")
+gam_predictors <- paste(gam_components[[1]], gam_components[[2]], gam_components[[3]], sep="_")
+all_predictors <-c(ryp_predictors, gam_predictors)
+```
+
+```{r echo=TRUE}
+#Create formula to predict 'classe' based on all predictors.
+fmla <- as.formula(paste("classe ~ ", paste(all_predictors, collapse= "+")))
+```
+
+My model is based on the following formula: 
+
+```{r echo=TRUE}
+print(fmla)
+```
+
+```{r echo=FALSE}
+#Initialize libraries and seeds
 library(caret)
 set.seed(199)
+# Hold 25% of the traning set for final out of sample estimation
 trainData <- read.csv("data/pml-training.csv")
 testData <- read.csv("data/pml-testing.csv")
 trainIdx <-createDataPartition(y=trainData$classe, p=0.75, list=FALSE)
 trainSet <- trainData[trainIdx, ]
 testSet <- trainData[-trainIdx, ]
 ```
+I split the available training data into two random partitions: 75% for the traning set and 25% for the validation set used for the final estimation of out of sample accuracy of the model.
 
+I use caret package to train randomForest on the traning set, and optimize the 'mtry' parameter (the number of variables to sample at each split) with cross-validation to maximize accuracy. I use the "oob" (out of bag) method which is avaible for random forest and provide fast and reliable estimate of the out of sample error for each value of the paramerter.
 
-Construct names of all variables of interest:
 ```{r}
-ryp_components <-expand.grid(c("roll","yaw","pitch"), c("dumbbell","arm", "forearm", "belt"))
-ryp_predictors <- paste(ryp_components[[1]], ryp_components[[2]], sep="_")
-all_predictors <-ryp_predictors
-```
-
-Create formula to predict 'classe' based on all predictors:
-```{r}
-fmla <- as.formula(paste("classe ~ ", paste(all_predictors, collapse= "+")))
-print(fmla)
-```
-
-Train a random forest model
-```{r}
-trControl <- trainControl(verboseIter=TRUE, method="none") 
+trControl <- trainControl(verboseIter=TRUE, method="oob") 
 rfModel <- train(
                fmla,
                data = trainSet,
                method="rf",
-               importance=TRUE, ntrees=200,
+               importance=FALSE, ntrees=50,
                trControl = trControl,
-               tuneGrid = data.frame(mtry=5),
-               tuneLength=1)
+               tuneGrid = data.frame(mtry=c(4,5,6)))
 ```
 
-You can also embed plots, for example:
-
-```{r fig.width=7, fig.height=6}
-varImpPlot(rfModel$finalModel)
+Here are the cross validation out-of-sample accuracies for tested 'mtry' values:
+```{r}
+print(rfModel$results)
 ```
+For the optimal value of mtry=`r rfModel$bestTune` the cross validation out of sample accuracy is: `r rfModel$results[rownames(rfModel$bestTune),"Accuracy"]`
 
-Calculate out of sample accuracy (on the test set):
+I use the validation set (holdout sample) to estimate the out of sample accuracy of the final model. 
+
 ```{r}
 predicted <- predict(rfModel, newdata = testSet)
-print(confusionMatrix(predicted, testSet$classe))
+cm <-confusionMatrix(predicted, testSet$classe)
+print(cm)
 ```
 
-
-
+Out of sample accuracy calculated on the holdout sample is: `r cm$overall[1]`
